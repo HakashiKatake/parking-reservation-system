@@ -10,11 +10,13 @@ import {
   StarIcon,
   EyeIcon,
   PencilIcon,
-  TrashIcon
+  TrashIcon,
+  QrCodeIcon
 } from '@heroicons/react/24/outline';
 import { useAuthStore, useVendorStore } from '../store';
 import { api } from '../services';
 import AddParkingLotModal from '../components/vendor/AddParkingLotModal';
+import QRCodeScanner from '../components/vendor/QRCodeScanner';
 
 const VendorStats = ({ stats }) => (
   <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
@@ -68,16 +70,24 @@ const VendorStats = ({ stats }) => (
   </div>
 );
 
-const QuickActions = ({ onAddParkingLot }) => (
+const QuickActions = ({ onAddParkingLot, onScanQR }) => (
   <div className="bg-white rounded-lg shadow-md p-6 mb-8">
     <h3 className="text-lg font-semibold text-gray-900 mb-4">Quick Actions</h3>
-    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+    <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
       <button 
         onClick={onAddParkingLot}
         className="flex items-center justify-center p-4 border-2 border-dashed border-gray-300 rounded-lg hover:border-indigo-500 hover:bg-indigo-50 transition-colors"
       >
         <PlusIcon className="h-6 w-6 text-gray-400 mr-3" />
         <span className="text-gray-600 hover:text-indigo-600">Add Parking Lot</span>
+      </button>
+
+      <button 
+        onClick={onScanQR}
+        className="flex items-center justify-center p-4 border-2 border-dashed border-gray-300 rounded-lg hover:border-blue-500 hover:bg-blue-50 transition-colors"
+      >
+        <QrCodeIcon className="h-6 w-6 text-gray-400 mr-3" />
+        <span className="text-gray-600 hover:text-blue-600">Scan QR Code</span>
       </button>
       
       <button className="flex items-center justify-center p-4 border-2 border-dashed border-gray-300 rounded-lg hover:border-green-500 hover:bg-green-50 transition-colors">
@@ -277,6 +287,7 @@ const VendorDashboard = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [showAddModal, setShowAddModal] = useState(false);
+  const [showQRScanner, setShowQRScanner] = useState(false);
 
   useEffect(() => {
     fetchDashboardData();
@@ -372,6 +383,24 @@ const VendorDashboard = () => {
     fetchDashboardData();
   };
 
+  const handleQRScanSuccess = (verificationData) => {
+    console.log('QR Scan successful:', verificationData);
+    
+    // Show success message
+    alert(`✅ Reservation verified!\nCustomer: ${verificationData.customer.name}\nSpot: #${verificationData.reservation.spotNumber}\nStatus: ${verificationData.action === 'checked_in' ? 'Checked In' : 'Already Checked In'}`);
+    
+    // Refresh dashboard data to update stats
+    fetchDashboardData();
+    
+    // Close scanner
+    setShowQRScanner(false);
+  };
+
+  const handleQRScanError = (error) => {
+    console.error('QR Scan error:', error);
+    alert(`❌ Scan failed: ${error.message}`);
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -419,7 +448,10 @@ const VendorDashboard = () => {
         <VendorStats stats={stats} />
 
         {/* Quick Actions */}
-        <QuickActions onAddParkingLot={() => setShowAddModal(true)} />
+        <QuickActions 
+          onAddParkingLot={() => setShowAddModal(true)} 
+          onScanQR={() => setShowQRScanner(true)}
+        />
 
         {/* Parking Lots */}
         <ParkingLotsList 
@@ -443,6 +475,15 @@ const VendorDashboard = () => {
           fetchDashboardData(); // Refresh data after adding
         }}
       />
+
+      {/* QR Code Scanner Modal */}
+      {showQRScanner && (
+        <QRCodeScanner
+          onScanSuccess={handleQRScanSuccess}
+          onClose={() => setShowQRScanner(false)}
+          vendorId={user?._id}
+        />
+      )}
     </div>
   );
 };

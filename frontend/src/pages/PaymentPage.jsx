@@ -12,10 +12,12 @@ import {
   LockClosedIcon,
   CheckCircleIcon,
   XCircleIcon,
-  ClockIcon
+  ClockIcon,
+  QrCodeIcon
 } from '@heroicons/react/24/outline';
 import { useAuthStore } from '../store';
 import { api } from '../services';
+import ReservationQRCode from '../components/common/ReservationQRCode';
 
 // Load Stripe (use test public key)
 const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLIC_KEY || 'pk_test_51234567890abcdef');
@@ -317,8 +319,32 @@ const PaymentSuccess = ({ booking, onContinue }) => (
     <p className="text-gray-600 mb-6">
       Your parking spot has been booked successfully.
       <br />
-      Booking ID: <span className="font-mono text-indigo-600">{booking?.id}</span>
+      Booking ID: <span className="font-mono text-indigo-600">{booking?.id || booking?._id}</span>
     </p>
+
+    {/* QR Code Section */}
+    <div className="bg-gradient-to-br from-indigo-50 to-blue-50 border border-indigo-200 rounded-lg p-6 mb-6 max-w-sm mx-auto">
+      <div className="flex items-center justify-center text-indigo-800 mb-4">
+        <QrCodeIcon className="h-6 w-6 mr-2" />
+        <span className="font-semibold text-lg">Reservation QR Code</span>
+      </div>
+      
+      {booking && (
+        <ReservationQRCode 
+          reservation={booking} 
+          size={180}
+        />
+      )}
+      
+      <div className="mt-4 p-3 bg-white rounded-lg border border-indigo-100">
+        <p className="text-sm text-indigo-700 font-medium mb-2">
+          📱 Show this QR code to the vendor
+        </p>
+        <p className="text-xs text-indigo-600">
+          The parking vendor will scan this code to verify your reservation and mark your spot as occupied.
+        </p>
+      </div>
+    </div>
     
     <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-6 max-w-md mx-auto">
       <div className="flex items-center text-green-800 mb-2">
@@ -326,9 +352,10 @@ const PaymentSuccess = ({ booking, onContinue }) => (
         <span className="font-medium">What's Next?</span>
       </div>
       <ul className="text-sm text-green-700 text-left space-y-1">
-        <li>• Check your email for booking confirmation</li>
+        <li>• Save or screenshot the QR code above</li>
         <li>• Arrive 15 minutes before your booking time</li>
-        <li>• Show this booking ID at the parking entrance</li>
+        <li>• Show the QR code to the parking vendor</li>
+        <li>• Check your email for booking confirmation</li>
         <li>• Contact support if you need any assistance</li>
       </ul>
     </div>

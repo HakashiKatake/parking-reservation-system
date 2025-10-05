@@ -11,7 +11,15 @@ export const generalLimiter = rateLimit({
     message: 'Too many requests from this IP, please try again later'
   },
   standardHeaders: true,
-  legacyHeaders: false
+  legacyHeaders: false,
+  keyGenerator: (req) => {
+    // Use X-Forwarded-For header if available (Vercel provides this), otherwise fallback to IP
+    return req.headers['x-forwarded-for']?.split(',')[0].trim() || 
+           req.headers['x-real-ip'] || 
+           req.connection.remoteAddress || 
+           req.socket.remoteAddress || 
+           'unknown';
+  }
 });
 
 /**
@@ -25,7 +33,14 @@ export const authLimiter = rateLimit({
     message: 'Too many authentication attempts, please try again later'
   },
   standardHeaders: true,
-  legacyHeaders: false
+  legacyHeaders: false,
+  keyGenerator: (req) => {
+    return req.headers['x-forwarded-for']?.split(',')[0].trim() || 
+           req.headers['x-real-ip'] || 
+           req.connection.remoteAddress || 
+           req.socket.remoteAddress || 
+           'unknown';
+  }
 });
 
 /**
@@ -39,7 +54,14 @@ export const otpLimiter = rateLimit({
     message: 'Too many OTP requests, please try again after 5 minutes'
   },
   standardHeaders: true,
-  legacyHeaders: false
+  legacyHeaders: false,
+  keyGenerator: (req) => {
+    return req.headers['x-forwarded-for']?.split(',')[0].trim() || 
+           req.headers['x-real-ip'] || 
+           req.connection.remoteAddress || 
+           req.socket.remoteAddress || 
+           'unknown';
+  }
 });
 
 /**

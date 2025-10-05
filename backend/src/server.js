@@ -7,7 +7,6 @@ import dotenv from 'dotenv';
 // Import utilities and middleware
 import connectDB from './utils/database.js';
 import { errorHandler, notFound } from './middleware/errorHandler.js';
-import { generalLimiter } from './middleware/rateLimiting.js';
 
 // Import routes
 import authRoutes from './routes/auth.js';
@@ -26,6 +25,7 @@ dotenv.config();
 // Debug environment variables
 console.log('Environment loaded:');
 console.log('NODE_ENV:', process.env.NODE_ENV);
+console.log('VERCEL:', process.env.VERCEL ? 'Running on Vercel' : 'Local development');
 console.log('STRIPE_SECRET_KEY:', process.env.STRIPE_SECRET_KEY ? 'Key loaded successfully' : 'No Stripe key found');
 console.log('MONGODB_URI:', process.env.MONGODB_URI ? 'MongoDB URI loaded' : 'No MongoDB URI found');
 
@@ -114,9 +114,6 @@ if (process.env.NODE_ENV === 'development') {
 } else {
   app.use(morgan('combined'));
 }
-
-// Rate limiting
-app.use(generalLimiter);
 
 // Health check endpoint
 app.get('/health', (req, res) => {

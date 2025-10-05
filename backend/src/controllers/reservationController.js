@@ -381,3 +381,157 @@ export const checkoutReservation = asyncHandler(async (req, res) => {
     data: reservation
   });
 });
+
+// @desc    Verify QR code and mark slot as taken
+// @route   POST /api/reservations/verify-qr
+// @access  Private (Vendor only)
+export const verifyQRCode = asyncHandler(async (req, res) => {
+  const { qrData, vendorId } = req.body;
+
+  // Validate QR data structure
+  if (!qrData || qrData.type !== 'parking_reservation' || !qrData.reservationId) {
+    return res.status(400).json({
+      success: false,
+      message: 'Invalid QR code format'
+    });
+  }
+
+  // Find the reservation
+  const reservation = await Reservation.findById(qrData.reservationId)
+    .populate('user', 'name phoneNumber email')
+    .populate('parkingLot', 'name address');
+
+  if (!reservation) {
+    return res.status(404).json({
+      success: false,
+      message: 'Reservation not found'
+    });
+  }
+
+  // Verify vendor ownership of the parking lot
+  const parkingLot = await ParkingLot.findOne({
+    _id: reservation.parkingLot._id,
+    vendor: req.user._id
+  });
+
+  if (!parkingLot) {
+    return res.status(403).json({
+      success: false,
+      message: 'You are not authorized to verify reservations for this parking lot'
+    });
+  }
+
+  // Validate reservation details match QR code
+  if (
+    reservation.parkingLot._id.toString() !== qrData.parkingLotId ||
+    reservation.user._id.toString() !== qrData.userId ||
+    reservation.spotNumber !== qrData.spotNumber
+  ) {
+    return res.status(400).json({
+      success: false,
+      message: 'QR code data does not match reservation details'
+    });
+  }
+
+  // Check if reservation is valid for check-in
+  if (reservation.status === 'cancelled') {
+    return res.status(400).json({
+      success: false,
+      message: 'This reservation has been cancelled'
+    });
+  }
+
+  if (reservation.status === 'completed') {
+    return res.status(400).json({
+      success: false,
+      message: 'This reservation has already been completed'
+    });
+  }
+
+  // Check timing - allow check-in up to 30 minutes before and after start time
+  const now = new Date();
+  const startTime = new Date(reservation.startTime);
+  const endTime = new Date(reservation.endTime);
+  const bufferTime = 30 * 60 * 1000; // 30 minutes in milliseconds
+
+  if (now < startTime - bufferTime) {
+    return res.status(400).json({
+      success: false,
+      message: `Reservation check-in is too early. You can check in starting ${new Date(startTime - bufferTime).toLocaleTimeString()}`
+    });
+  }
+
+  if (now > endTime + bufferTime) {
+    return res.status(400).json({
+      success: false,
+      message: 'This reservation has expired'
+    });
+  }
+
+  // Check if already checked in
+  if (reservation.status === 'active') {
+    return res.status(200).json({
+      success: true,
+      message: 'Reservation already checked in',
+      data: {
+        reservation: {
+          id: reservation._id,
+          spotNumber: reservation.spotNumber,
+          status: reservation.status,
+          startTime: reservation.startTime,
+          endTime: reservation.endTime,
+          actualStartTime: reservation.actualStartTime
+        },
+        customer: {
+          name: reservation.user.name,
+          phoneNumber: reservation.user.phoneNumber
+        },
+        parkingLot: {
+          name: reservation.parkingLot.name,
+          address: reservation.parkingLot.address
+        },
+        verifiedAt: now,
+        action: 'already_checked_in'
+      }
+    });
+  }
+
+  // Update reservation to active status
+  reservation.status = 'active';
+  reservation.actualStartTime = now;
+  
+  await reservation.save();
+
+  // Update parking lot spot availability
+  const spotIndex = parkingLot.spots.findIndex(spot => spot.spotNumber === reservation.spotNumber);
+  if (spotIndex !== -1) {
+    parkingLot.spots[spotIndex].isAvailable = false;
+    parkingLot.spots[spotIndex].currentReservation = reservation._id;
+    await parkingLot.save();
+  }
+
+  res.status(200).json({
+    success: true,
+    message: 'QR code verified successfully! Slot marked as taken.',
+    data: {
+      reservation: {
+        id: reservation._id,
+        spotNumber: reservation.spotNumber,
+        status: reservation.status,
+        startTime: reservation.startTime,
+        endTime: reservation.endTime,
+        actualStartTime: reservation.actualStartTime
+      },
+      customer: {
+        name: reservation.user.name,
+        phoneNumber: reservation.user.phoneNumber
+      },
+      parkingLot: {
+        name: reservation.parkingLot.name,
+        address: reservation.parkingLot.address
+      },
+      verifiedAt: now,
+      action: 'checked_in'
+    }
+  });
+});

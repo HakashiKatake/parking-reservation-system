@@ -12,13 +12,12 @@ import {
 } from '../controllers/parkingLotController.js';
 import { protect, restrictTo, requireVendorVerification } from '../middleware/auth.js';
 import { handleValidationErrors } from '../middleware/errorHandler.js';
-import { searchLimiter } from '../middleware/rateLimiting.js';
 
 const router = express.Router();
 
 // Public routes
-router.get('/', searchLimiter, getParkingLots);
-router.get('/search-vendors', searchLimiter, searchVendorLotsByLocation);
+router.get('/', getParkingLots);
+router.get('/search-vendors', searchVendorLotsByLocation);
 router.get('/:id', getParkingLot);
 router.post('/:id/check-availability', checkAvailability);
 
