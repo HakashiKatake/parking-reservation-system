@@ -54,7 +54,7 @@ const HomePage = () => {
     {
       name: 'Priya Sharma',
       location: 'Mumbai',
-      text: 'ParkEasy saved my time and stress. Found parking near Bandra station in seconds!',
+      text: 'ParkPlot saved my time and stress. Found parking near Bandra station in seconds!',
       rating: 5
     },
     {
@@ -125,7 +125,7 @@ const HomePage = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16">
             <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-4">
-              Why Choose ParkEasy?
+              Why Choose ParkPlot?
             </h2>
             <p className="text-xl text-gray-600 max-w-3xl mx-auto">
               We make parking simple, secure, and stress-free with our innovative technology 
@@ -246,7 +246,7 @@ const HomePage = () => {
             Ready to Park Smarter?
           </h2>
           <p className="text-xl mb-8 text-blue-100">
-            Join ParkEasy today and never worry about parking again
+            Join ParkPlot today and never worry about parking again
           </p>
           
           <div className="flex flex-col sm:flex-row gap-4 justify-center">

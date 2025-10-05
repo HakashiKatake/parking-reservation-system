@@ -27,7 +27,27 @@ export const handleValidationErrors = (req, res, next) => {
  * Global error handling middleware
  */
 export const errorHandler = (err, req, res, next) => {
-  console.error('Error Stack:', err.stack);
+  console.error('Error Details:');
+  console.error('Message:', err.message);
+  console.error('Stack:', err.stack);
+  console.error('Request URL:', req.originalUrl);
+  console.error('Request Method:', req.method);
+  console.error('Request Origin:', req.headers.origin);
+  
+  // Add CORS headers to error responses
+  const origin = req.headers.origin;
+  const allowedOrigins = [
+    'http://localhost:3000',
+    'http://localhost:5173',
+    'http://localhost:5174',
+    'https://parking-reservation-frontend.vercel.app',
+    'https://parkplot.vercel.app'
+  ];
+  
+  if (allowedOrigins.includes(origin)) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+    res.setHeader('Access-Control-Allow-Credentials', 'true');
+  }
   
   let error = { ...err };
   error.message = err.message;

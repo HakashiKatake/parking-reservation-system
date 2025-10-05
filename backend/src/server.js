@@ -41,18 +41,68 @@ app.use(helmet({
 }));
 
 // CORS configuration
-app.use(cors({
-  origin: [
+const corsOptions = {
+  origin: function (origin, callback) {
+    const allowedOrigins = [
+      'http://localhost:3000',
+      'http://localhost:5173',
+      'http://localhost:5174',
+      'https://parking-reservation-frontend.vercel.app',
+      'https://parkplot.vercel.app' // ParkPlot production frontend URL
+    ];
+    
+    // Allow requests with no origin (mobile apps, Postman, etc.)
+    if (!origin) return callback(null, true);
+    
+    if (allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      console.log('CORS blocked origin:', origin);
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+  optionsSuccessStatus: 200
+};
+
+app.use(cors(corsOptions));
+
+// Handle preflight requests explicitly
+app.options('*', (req, res) => {
+  res.header('Access-Control-Allow-Origin', req.headers.origin);
+  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With');
+  res.header('Access-Control-Allow-Credentials', 'true');
+  res.sendStatus(200);
+});
+
+// Additional CORS headers middleware (for Vercel compatibility)
+app.use((req, res, next) => {
+  const origin = req.headers.origin;
+  const allowedOrigins = [
     'http://localhost:3000',
     'http://localhost:5173',
     'http://localhost:5174',
     'https://parking-reservation-frontend.vercel.app',
-    'https://parkplot.vercel.app' // ParkPlot production frontend URL
-  ],
-  credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization']
-}));
+    'https://parkplot.vercel.app'
+  ];
+  
+  if (allowedOrigins.includes(origin)) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+  }
+  
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With');
+  res.setHeader('Access-Control-Allow-Credentials', 'true');
+  
+  if (req.method === 'OPTIONS') {
+    return res.sendStatus(200);
+  }
+  
+  next();
+});
 
 // Body parsing middleware
 app.use(express.json({ limit: '10mb' }));
@@ -75,6 +125,34 @@ app.get('/health', (req, res) => {
     message: 'Server is healthy',
     timestamp: new Date().toISOString(),
     environment: process.env.NODE_ENV
+  });
+});
+
+// CORS test endpoint
+app.get('/test-cors', (req, res) => {
+  console.log('CORS test endpoint hit');
+  console.log('Origin:', req.headers.origin);
+  console.log('Headers:', req.headers);
+  
+  res.status(200).json({
+    success: true,
+    message: 'CORS test successful',
+    origin: req.headers.origin,
+    timestamp: new Date().toISOString()
+  });
+});
+
+// Test POST endpoint
+app.post('/test-post', (req, res) => {
+  console.log('Test POST endpoint hit');
+  console.log('Origin:', req.headers.origin);
+  console.log('Body:', req.body);
+  
+  res.status(200).json({
+    success: true,
+    message: 'POST test successful',
+    receivedData: req.body,
+    timestamp: new Date().toISOString()
   });
 });
 

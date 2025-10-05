@@ -51,7 +51,7 @@ const Header = () => {
                 <MapPinIcon className="h-6 w-6 text-white" />
               </div>
               <span className="text-xl font-bold text-gray-900">
-                Park<span className="text-blue-600">Easy</span>
+                Park<span className="text-blue-600">Plot</span>
               </span>
             </Link>
 
@@ -81,8 +81,7 @@ const Header = () => {
           <div className="flex items-center space-x-4">
             {/* Contact number */}
             <div className="hidden sm:flex items-center text-sm text-gray-600">
-              <PhoneIcon className="h-4 w-4 mr-1" />
-              <span>+91 98765 43210</span>
+              
             </div>
 
             {isAuthenticated ? (

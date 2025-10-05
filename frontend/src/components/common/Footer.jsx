@@ -66,7 +66,7 @@ const Footer = () => {
               </div>
               <div className="flex items-center text-sm text-gray-300">
                 <EnvelopeIcon className="h-4 w-4 mr-2" />
-                <span>support@parkeasy.com</span>
+                <span>support@parkplot.com</span>
               </div>
               <div className="flex items-center text-sm text-gray-300">
                 <BuildingOfficeIcon className="h-4 w-4 mr-2" />
@@ -179,7 +179,7 @@ const Footer = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
           <div className="flex flex-col sm:flex-row justify-between items-center">
             <p className="text-gray-400 text-sm mb-4 sm:mb-0">
-              © {currentYear} ParkEasy. All rights reserved. Made in India 🇮🇳
+              © {currentYear} ParkPlot. All rights reserved. Made in India 🇮🇳
             </p>
             
             {/* Social links */}
