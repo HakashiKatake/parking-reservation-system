@@ -82,6 +82,11 @@ const SimpleSearchPage = () => {
       };
 
       const coordinates = await geocodeLocation();
+      
+      // Store coordinates globally for map centering
+      if (coordinates) {
+        window.searchLocationCoords = coordinates;
+      }
 
       // Search our vendor database by location name (simple text search)
       try {
@@ -105,8 +110,8 @@ const SimpleSearchPage = () => {
       }
 
       // Search Google Places for parking
-      if (window.google) {
-        googleResults = await searchGooglePlacesParking(location);
+      if (window.google && coordinates) {
+        googleResults = await searchGooglePlacesParking(location, coordinates);
       }
       
       const allResults = [...vendorLots, ...googleResults];
@@ -124,7 +129,7 @@ const SimpleSearchPage = () => {
   };
 
   // Search Google Places for parking
-  const searchGooglePlacesParking = async (searchLocation) => {
+  const searchGooglePlacesParking = async (searchLocation, coordinates = null) => {
     return new Promise((resolve) => {
       if (!window.google || !window.google.maps) {
         resolve([]);
@@ -134,51 +139,94 @@ const SimpleSearchPage = () => {
       const service = new window.google.maps.places.PlacesService(
         document.createElement('div')
       );
-      const geocoder = new window.google.maps.Geocoder();
       
-      geocoder.geocode({ address: searchLocation }, (results, status) => {
-        if (status === 'OK' && results && results[0]) {
-          const location = results[0].geometry.location;
-          
-          const request = {
-            location: location,
-            radius: 5000,
-            type: 'parking',
-            keyword: 'parking lot car park'
-          };
+      // Use provided coordinates or geocode the location
+      if (coordinates) {
+        const location = new window.google.maps.LatLng(coordinates.lat, coordinates.lng);
+        
+        const request = {
+          location: location,
+          radius: 5000,
+          type: 'parking',
+          keyword: 'parking lot car park'
+        };
 
-          service.nearbySearch(request, (results, status) => {
-            if (status === window.google.maps.places.PlacesServiceStatus.OK && results) {
-              const googleParkingLots = results.slice(0, 8).map((place, index) => ({
-                _id: `google-${index}`,
-                name: place.name || 'Parking Area',
-                address: place.vicinity || '',
-                pricePerHour: Math.floor(Math.random() * 100) + 30,
-                rating: Number((Math.random() * 2 + 3).toFixed(1)),
-                totalReviews: Math.floor(Math.random() * 100) + 10,
-                distance: Math.random() * 3,
-                availableSpots: Math.floor(Math.random() * 30) + 5,
-                totalSpots: Math.floor(Math.random() * 50) + 20,
-                amenities: ['Parking'],
-                isVendorLot: false,
-                location: {
-                  type: 'Point',
-                  coordinates: [
-                    place.geometry?.location?.lng() || 0,
-                    place.geometry?.location?.lat() || 0
-                  ]
-                }
-              }));
-              
-              resolve(googleParkingLots);
-            } else {
-              resolve([]);
-            }
-          });
-        } else {
-          resolve([]);
-        }
-      });
+        service.nearbySearch(request, (results, status) => {
+          if (status === window.google.maps.places.PlacesServiceStatus.OK && results) {
+            const googleParkingLots = results.slice(0, 8).map((place, index) => ({
+              _id: `google-${index}`,
+              name: place.name || 'Parking Area',
+              address: place.vicinity || '',
+              pricePerHour: Math.floor(Math.random() * 100) + 30,
+              rating: Number((Math.random() * 2 + 3).toFixed(1)),
+              totalReviews: Math.floor(Math.random() * 100) + 10,
+              distance: Math.random() * 3,
+              availableSpots: Math.floor(Math.random() * 30) + 5,
+              totalSpots: Math.floor(Math.random() * 50) + 20,
+              amenities: ['Parking'],
+              isVendorLot: false,
+              location: {
+                type: 'Point',
+                coordinates: [
+                  place.geometry?.location?.lng() || 0,
+                  place.geometry?.location?.lat() || 0
+                ]
+              }
+            }));
+            
+            resolve(googleParkingLots);
+          } else {
+            resolve([]);
+          }
+        });
+      } else {
+        // Fallback to geocoding if no coordinates provided
+        const geocoder = new window.google.maps.Geocoder();
+        
+        geocoder.geocode({ address: searchLocation }, (results, status) => {
+          if (status === 'OK' && results && results[0]) {
+            const location = results[0].geometry.location;
+            
+            const request = {
+              location: location,
+              radius: 5000,
+              type: 'parking',
+              keyword: 'parking lot car park'
+            };
+
+            service.nearbySearch(request, (results, status) => {
+              if (status === window.google.maps.places.PlacesServiceStatus.OK && results) {
+                const googleParkingLots = results.slice(0, 8).map((place, index) => ({
+                  _id: `google-${index}`,
+                  name: place.name || 'Parking Area',
+                  address: place.vicinity || '',
+                  pricePerHour: Math.floor(Math.random() * 100) + 30,
+                  rating: Number((Math.random() * 2 + 3).toFixed(1)),
+                  totalReviews: Math.floor(Math.random() * 100) + 10,
+                  distance: Math.random() * 3,
+                  availableSpots: Math.floor(Math.random() * 30) + 5,
+                  totalSpots: Math.floor(Math.random() * 50) + 20,
+                  amenities: ['Parking'],
+                  isVendorLot: false,
+                  location: {
+                    type: 'Point',
+                    coordinates: [
+                      place.geometry?.location?.lng() || 0,
+                      place.geometry?.location?.lat() || 0
+                    ]
+                  }
+                }));
+                
+                resolve(googleParkingLots);
+              } else {
+                resolve([]);
+              }
+            });
+          } else {
+            resolve([]);
+          }
+        });
+      }
     });
   };
 
@@ -186,8 +234,27 @@ const SimpleSearchPage = () => {
     const mapElement = document.getElementById('search-map');
     if (!mapElement || !window.google || !searchResults) return;
 
+    // Determine map center based on search results or default to Delhi
+    let mapCenter = { lat: 28.6139, lng: 77.2090 }; // Default to Delhi
+    
+    // If we have results with coordinates, center on the first result
+    if (searchResults.allResults && searchResults.allResults.length > 0) {
+      const firstResult = searchResults.allResults[0];
+      if (firstResult.location?.coordinates) {
+        mapCenter = {
+          lat: firstResult.location.coordinates[1],
+          lng: firstResult.location.coordinates[0]
+        };
+      }
+    }
+
+    // If we have a geocoded location from search, use that
+    if (window.searchLocationCoords) {
+      mapCenter = window.searchLocationCoords;
+    }
+
     const map = new window.google.maps.Map(mapElement, {
-      center: { lat: 28.6139, lng: 77.2090 }, // Default to Delhi
+      center: mapCenter,
       zoom: 12,
       mapTypeControl: false,
       streetViewControl: false,
