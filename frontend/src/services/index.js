@@ -249,25 +249,38 @@ export const vendorAPI = {
 // Reviews API endpoints
 export const reviewAPI = {
   // Get reviews for parking lot
-  getReviews: async (parkingLotId, params = {}) => {
-    return api.get(`/reviews`, { 
-      params: { parkingLot: parkingLotId, ...params } 
-    });
+  getParkingLotReviews: async (parkingLotId, params = {}) => {
+    return apiClient.get(`/reviews/parking-lot/${parkingLotId}`, { params });
+  },
+
+  // Get user's reviews
+  getUserReviews: async (params = {}) => {
+    return apiClient.get('/reviews/my-reviews', { params });
+  },
+
+  // Get vendor's reviews
+  getVendorReviews: async (params = {}) => {
+    return apiClient.get('/reviews/vendor-reviews', { params });
   },
 
   // Create review
   createReview: async (reviewData) => {
-    return api.post('/reviews', reviewData);
+    return apiClient.post('/reviews', reviewData);
   },
 
   // Update review
   updateReview: async (id, reviewData) => {
-    return api.put(`/reviews/${id}`, reviewData);
+    return apiClient.put(`/reviews/${id}`, reviewData);
   },
 
   // Delete review
   deleteReview: async (id) => {
-    return api.delete(`/reviews/${id}`);
+    return apiClient.delete(`/reviews/${id}`);
+  },
+
+  // Respond to review (vendor only)
+  respondToReview: async (id, response) => {
+    return apiClient.put(`/reviews/${id}/respond`, { response });
   },
 };
 

@@ -14,7 +14,7 @@ import {
   QrCodeIcon
 } from '@heroicons/react/24/outline';
 import { useAuthStore, useVendorStore } from '../store';
-import { api } from '../services';
+import { api, reviewAPI } from '../services';
 import AddParkingLotModal from '../components/vendor/AddParkingLotModal';
 import QRCodeScanner from '../components/vendor/QRCodeScanner';
 
@@ -278,6 +278,77 @@ const RecentBookings = ({ bookings }) => (
   </div>
 );
 
+const RecentReviews = ({ reviews }) => (
+  <div className="bg-white rounded-lg shadow-md p-6">
+    <h3 className="text-lg font-semibold text-gray-900 mb-4">Recent Reviews</h3>
+    
+    {!reviews || reviews.length === 0 ? (
+      <div className="text-center py-8">
+        <StarIcon className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+        <p className="text-gray-600">No reviews yet</p>
+        <p className="text-sm text-gray-500 mt-1">Reviews will appear here once customers rate your parking lots</p>
+      </div>
+    ) : (
+      <div className="space-y-4 max-h-96 overflow-y-auto">
+        {reviews.map((review) => (
+          <div key={review._id} className="border border-gray-200 rounded-lg p-4">
+            <div className="flex justify-between items-start mb-2">
+              <div className="flex-1">
+                <div className="flex items-center mb-1">
+                  <h4 className="font-medium text-gray-900 mr-2">{review.user.name}</h4>
+                  <div className="flex items-center">
+                    {[1, 2, 3, 4, 5].map((star) => (
+                      <StarIcon
+                        key={star}
+                        className={`h-4 w-4 ${
+                          star <= review.rating ? 'text-yellow-400' : 'text-gray-300'
+                        }`}
+                      />
+                    ))}
+                    <span className="text-sm text-gray-600 ml-1">({review.rating}/5)</span>
+                  </div>
+                </div>
+                <p className="text-sm text-gray-600">{review.parkingLot.name}</p>
+              </div>
+              <span className="text-xs text-gray-500">
+                {new Date(review.createdAt).toLocaleDateString()}
+              </span>
+            </div>
+            
+            {review.review && (
+              <p className="text-sm text-gray-700 mb-3 italic">"{review.review}"</p>
+            )}
+            
+            {review.aspects && Object.values(review.aspects).some(val => val > 0) && (
+              <div className="grid grid-cols-2 gap-2 text-xs text-gray-600">
+                {review.aspects.cleanliness > 0 && (
+                  <div>Cleanliness: {review.aspects.cleanliness}/5</div>
+                )}
+                {review.aspects.security > 0 && (
+                  <div>Security: {review.aspects.security}/5</div>
+                )}
+                {review.aspects.accessibility > 0 && (
+                  <div>Accessibility: {review.aspects.accessibility}/5</div>
+                )}
+                {review.aspects.valueForMoney > 0 && (
+                  <div>Value: {review.aspects.valueForMoney}/5</div>
+                )}
+              </div>
+            )}
+
+            {review.vendorResponse && (
+              <div className="mt-3 p-2 bg-blue-50 rounded border-l-4 border-blue-400">
+                <p className="text-sm text-blue-800 font-medium">Your Response:</p>
+                <p className="text-sm text-blue-700">{review.vendorResponse.message}</p>
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+    )}
+  </div>
+);
+
 const VendorDashboard = () => {
   const { user } = useAuthStore();
   const { vendorParkingLots, setVendorParkingLots, vendorAnalytics, setVendorAnalytics } = useVendorStore();
@@ -288,6 +359,7 @@ const VendorDashboard = () => {
     averageRating: 0
   });
   const [recentBookings, setRecentBookings] = useState([]);
+  const [recentReviews, setRecentReviews] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [showAddModal, setShowAddModal] = useState(false);
@@ -340,6 +412,14 @@ const VendorDashboard = () => {
           console.log('VendorDashboard - First Reservation Data:', reservations[0]);
         }
         setRecentBookings(reservations);
+      }
+
+      // Fetch recent reviews
+      const reviewsResponse = await reviewAPI.getVendorReviews({ limit: 5 });
+      console.log('Vendor Reviews data:', reviewsResponse);
+      
+      if (reviewsResponse.success) {
+        setRecentReviews(reviewsResponse.data.reviews || []);
       }
       
     } catch (error) {
@@ -473,6 +553,9 @@ const VendorDashboard = () => {
 
         {/* Recent Bookings */}
         <RecentBookings bookings={recentBookings} />
+
+        {/* Recent Reviews */}
+        <RecentReviews reviews={recentReviews} />
       </div>
 
       {/* Add Parking Lot Modal */}

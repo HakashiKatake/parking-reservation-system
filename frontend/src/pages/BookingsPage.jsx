@@ -5,10 +5,12 @@ import {
   MapPinIcon, 
   CurrencyRupeeIcon, 
   FunnelIcon, 
-  MagnifyingGlassIcon 
+  MagnifyingGlassIcon,
+  StarIcon
 } from '@heroicons/react/24/outline';
-import { api } from '../services';
+import { api, reviewAPI } from '../services';
 import { useAuthStore } from '../store';
+import RatingReviewComponent from '../components/common/RatingReviewComponent';
 
 const BookingsPage = () => {
   const { user, token, isAuthenticated } = useAuthStore();
@@ -18,6 +20,9 @@ const BookingsPage = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
+  const [showReviewModal, setShowReviewModal] = useState(false);
+  const [selectedBooking, setSelectedBooking] = useState(null);
+  const [submittingReview, setSubmittingReview] = useState(false);
 
   const statusColors = {
     pending: 'bg-yellow-100 text-yellow-800',
@@ -112,6 +117,39 @@ const BookingsPage = () => {
     const end = new Date(endTime);
     const hours = Math.ceil((end - start) / (1000 * 60 * 60));
     return `${hours} hour${hours !== 1 ? 's' : ''}`;
+  };
+
+  const handleAddReview = (booking) => {
+    setSelectedBooking(booking);
+    setShowReviewModal(true);
+  };
+
+  const handleSubmitReview = async (reviewData) => {
+    try {
+      setSubmittingReview(true);
+      console.log('Submitting review:', reviewData);
+      
+      const response = await reviewAPI.createReview(reviewData);
+      console.log('Review submitted:', response);
+      
+      if (response.success) {
+        alert('Review submitted successfully! Thank you for your feedback.');
+        setShowReviewModal(false);
+        setSelectedBooking(null);
+        // Refresh bookings to show updated status
+        fetchBookings();
+      }
+    } catch (error) {
+      console.error('Failed to submit review:', error);
+      alert(error.response?.data?.message || 'Failed to submit review. Please try again.');
+    } finally {
+      setSubmittingReview(false);
+    }
+  };
+
+  const handleCancelReview = () => {
+    setShowReviewModal(false);
+    setSelectedBooking(null);
   };
 
   if (loading) {
@@ -278,6 +316,16 @@ const BookingsPage = () => {
                       View Details
                     </button>
                     
+                    {booking.status === 'completed' && (
+                      <button
+                        onClick={() => handleAddReview(booking)}
+                        className="flex items-center text-yellow-600 hover:text-yellow-800 font-medium text-sm"
+                      >
+                        <StarIcon className="h-4 w-4 mr-1" />
+                        Write Review
+                      </button>
+                    )}
+                    
                     {booking.status === 'confirmed' && (
                       <button
                         onClick={() => {
@@ -335,6 +383,20 @@ const BookingsPage = () => {
           </div>
         )}
       </div>
+
+      {/* Review Modal */}
+      {showReviewModal && selectedBooking && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <RatingReviewComponent
+              reservation={selectedBooking}
+              onSubmitReview={handleSubmitReview}
+              onCancel={handleCancelReview}
+              isSubmitting={submittingReview}
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 };

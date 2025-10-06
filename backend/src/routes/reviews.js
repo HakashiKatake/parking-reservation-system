@@ -1,22 +1,31 @@
 import express from 'express';
-import { protect } from '../middleware/auth.js';
+import { protect, restrictTo } from '../middleware/auth.js';
+import {
+  createReview,
+  getParkingLotReviews,
+  getUserReviews,
+  updateReview,
+  deleteReview,
+  getVendorReviews,
+  respondToReview
+} from '../controllers/reviewController.js';
 
 const router = express.Router();
 
-// Review routes
-router.get('/', (req, res) => {
-  res.status(200).json({
-    success: true,
-    message: 'Reviews endpoint - Coming soon',
-    data: []
-  });
-});
+// Public routes
+router.get('/parking-lot/:id', getParkingLotReviews);
 
-router.post('/', protect, (req, res) => {
-  res.status(200).json({
-    success: true,
-    message: 'Create review endpoint - Coming soon'
-  });
-});
+// Protected routes (require authentication)
+router.use(protect);
+
+// User review routes
+router.post('/', createReview);
+router.get('/my-reviews', getUserReviews);
+router.put('/:id', updateReview);
+router.delete('/:id', deleteReview);
+
+// Vendor routes
+router.get('/vendor-reviews', restrictTo('vendor'), getVendorReviews);
+router.put('/:id/respond', restrictTo('vendor'), respondToReview);
 
 export default router;

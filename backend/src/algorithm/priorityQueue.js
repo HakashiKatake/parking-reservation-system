@@ -25,50 +25,34 @@ class PriorityQueue {
         this.heap = [];
     }
 
-    /**
-     * INSERT OPERATION
-     * ================
-     * Adds a new booking request to the queue with priority
-     * 
-     * @param {Object} booking - Booking request object
-     * @param {string} booking.userId - User ID
-     * @param {string} booking.userType - 'premium' or 'free'
-     * @param {Date} booking.timestamp - When request was made
-     * @param {Object} booking.details - Booking details
-     */
+   
     insert(booking) {
-        // Calculate priority score
+        
         const priority = this.calculatePriority(booking);
         
-        // Create queue item with priority
+        
         const item = {
             ...booking,
             priority: priority,
             insertTime: Date.now()
         };
         
-        // Add to heap and bubble up
+       
         this.heap.push(item);
         this.bubbleUp(this.heap.length - 1);
         
         console.log(`🚗 Added booking request: User ${booking.userId} (${booking.userType}) - Priority: ${priority}`);
     }
 
-    /**
-     * EXTRACT MAXIMUM PRIORITY OPERATION
-     * ==================================
-     * Removes and returns the highest priority booking request
-     * 
-     * @returns {Object|null} - Highest priority booking or null if empty
-     */
+    
     extractMax() {
         if (this.heap.length === 0) return null;
         if (this.heap.length === 1) return this.heap.pop();
 
-        // Get max element (root)
+       
         const max = this.heap[0];
         
-        // Move last element to root and bubble down
+        
         this.heap[0] = this.heap.pop();
         this.bubbleDown(0);
         
@@ -76,153 +60,121 @@ class PriorityQueue {
         return max;
     }
 
-    /**
-     * PRIORITY CALCULATION ALGORITHM
-     * ==============================
-     * Simple scoring system for priority:
-     * 
-     * BASE SCORES:
-     * - Premium User: 1000 points
-     * - Free User: 100 points
-     * 
-     * TIME BONUS:
-     * - Earlier requests get slight bonus (max 50 points)
-     * 
-     * TOTAL PRIORITY = BASE_SCORE + TIME_BONUS
-     */
+    
     calculatePriority(booking) {
         let priority = 0;
         
-        // 1. User Type Priority (Main Factor)
+        
         switch (booking.userType) {
             case 'premium':
-                priority += 1000; // Premium users get 10x priority
+                priority += 1000; 
                 break;
             case 'free':
             default:
-                priority += 100; // Base priority for free users
+                priority += 100; 
                 break;
         }
         
-        // 2. Time-based Priority (Secondary Factor)
-        // Earlier requests get slight advantage within same user type
+       
         const now = Date.now();
         const requestTime = new Date(booking.timestamp).getTime();
         const timeDiff = now - requestTime;
         
-        // Newer requests (smaller timeDiff) get higher time bonus
+        
         const timeBonus = Math.max(0, 50 - Math.floor(timeDiff / 1000));
         priority += timeBonus;
         
-        // 3. Booking Value Priority (Tertiary Factor)
-        // Higher value bookings get slight preference
+        
         const valueBonus = Math.min(10, Math.floor((booking.details?.totalAmount || 0) / 10));
         priority += valueBonus;
         
         return priority;
     }
 
-    /**
-     * HEAP OPERATIONS
-     * ===============
-     * Standard binary heap operations for maintaining priority order
-     */
-    
-    // Move element up until heap property is satisfied
+   
     bubbleUp(index) {
         while (index > 0) {
             const parentIndex = Math.floor((index - 1) / 2);
             
-            // If parent has higher priority, stop
+           
             if (this.heap[parentIndex].priority >= this.heap[index].priority) {
                 break;
             }
             
-            // Swap with parent
+           
             this.swap(index, parentIndex);
             index = parentIndex;
         }
     }
     
-    // Move element down until heap property is satisfied
+    
     bubbleDown(index) {
         while (true) {
             let maxIndex = index;
             const leftChild = 2 * index + 1;
             const rightChild = 2 * index + 2;
             
-            // Check if left child has higher priority
+            
             if (leftChild < this.heap.length && 
                 this.heap[leftChild].priority > this.heap[maxIndex].priority) {
                 maxIndex = leftChild;
             }
             
-            // Check if right child has higher priority
+            
             if (rightChild < this.heap.length && 
                 this.heap[rightChild].priority > this.heap[maxIndex].priority) {
                 maxIndex = rightChild;
             }
             
-            // If no child has higher priority, stop
+            
             if (maxIndex === index) {
                 break;
             }
             
-            // Swap with child with higher priority
+            
             this.swap(index, maxIndex);
             index = maxIndex;
         }
     }
     
-    // Utility function to swap two elements
+   
     swap(i, j) {
         [this.heap[i], this.heap[j]] = [this.heap[j], this.heap[i]];
     }
 
-    /**
-     * UTILITY METHODS
-     * ===============
-     */
     
-    // Check if queue is empty
     isEmpty() {
         return this.heap.length === 0;
     }
     
-    // Get size of queue
+  
     size() {
         return this.heap.length;
     }
     
-    // Peek at highest priority without removing
+    
     peek() {
         return this.heap.length > 0 ? this.heap[0] : null;
     }
     
-    // Get all items sorted by priority (for display)
+
     getAllSorted() {
         return [...this.heap].sort((a, b) => b.priority - a.priority);
     }
     
-    // Clear all items
+
     clear() {
         this.heap = [];
     }
 }
 
-/**
- * BOOKING PRIORITY SERVICE
- * ========================
- * Service class that integrates priority queue with booking system
- */
+
 class BookingPriorityService {
     constructor() {
-        this.queues = new Map(); // One queue per parking lot
+        this.queues = new Map(); 
     }
     
-    /**
-     * Add booking request to priority queue
-     */
+   
     addBookingRequest(parkingLotId, booking) {
         if (!this.queues.has(parkingLotId)) {
             this.queues.set(parkingLotId, new PriorityQueue());
@@ -237,9 +189,7 @@ class BookingPriorityService {
         };
     }
     
-    /**
-     * Process next booking request
-     */
+   
     processNextBooking(parkingLotId) {
         const queue = this.queues.get(parkingLotId);
         if (!queue || queue.isEmpty()) {
@@ -249,9 +199,6 @@ class BookingPriorityService {
         return queue.extractMax();
     }
     
-    /**
-     * Get queue status for a parking lot
-     */
     getQueueStatus(parkingLotId) {
         const queue = this.queues.get(parkingLotId);
         if (!queue) {
@@ -269,24 +216,19 @@ class BookingPriorityService {
         };
     }
     
-    /**
-     * Calculate estimated wait time
-     */
+    
     calculateWaitTime(queue, booking) {
         const position = queue.getAllSorted().findIndex(item => 
             item.userId === booking.userId && 
             item.insertTime === booking.insertTime
         );
         
-        // Assume 2 minutes per booking ahead
+        
         return (position + 1) * 2;
     }
 }
 
-/**
- * EXAMPLE USAGE AND DEMONSTRATION
- * ===============================
- */
+
 function demonstratePriorityQueue() {
     console.log("\n🚀 PARKING PRIORITY QUEUE DEMONSTRATION");
     console.log("=====================================\n");
@@ -346,6 +288,8 @@ function demonstratePriorityQueue() {
     
     console.log("\n✅ All bookings processed!\n");
 }
+
+demonstratePriorityQueue();
 
 // Export classes and functions
 export { PriorityQueue, BookingPriorityService, demonstratePriorityQueue };
