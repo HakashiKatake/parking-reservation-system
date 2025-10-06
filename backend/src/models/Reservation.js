@@ -1,4 +1,5 @@
 import mongoose from 'mongoose';
+import crypto from 'crypto';
 
 const reservationSchema = new mongoose.Schema({
   user: {
@@ -107,6 +108,11 @@ const reservationSchema = new mongoose.Schema({
     type: String,
     unique: true
   },
+  vehicleTimeHash: {
+    type: String,
+    unique: true,
+    index: true
+  },
   specialRequests: {
     type: String,
     maxlength: [200, 'Special requests cannot be more than 200 characters']
@@ -149,6 +155,9 @@ reservationSchema.index({ parkingLot: 1, 'timeSlot.startTime': 1, 'timeSlot.endT
 reservationSchema.index({ status: 1, 'timeSlot.startTime': 1 });
 reservationSchema.index({ qrCode: 1 });
 reservationSchema.index({ 'paymentInfo.paymentId': 1 });
+reservationSchema.index({ vehicleTimeHash: 1 });
+reservationSchema.index({ 'vehicleInfo.numberPlate': 1, 'timeSlot.startTime': 1 });
+reservationSchema.index({ 'vehicleInfo.numberPlate': 1, parkingLot: 1, status: 1 });
 
 // Virtual for checking if reservation is active
 reservationSchema.virtual('isActive').get(function() {
@@ -165,7 +174,7 @@ reservationSchema.virtual('canCancel').get(function() {
   return hoursUntilStart > 1 && ['pending', 'confirmed'].includes(this.status);
 });
 
-// Pre-save middleware to calculate duration and generate QR code
+// Pre-save middleware to calculate duration, generate QR code, and create hash
 reservationSchema.pre('save', function(next) {
   // Calculate duration
   if (this.timeSlot.startTime && this.timeSlot.endTime) {
@@ -176,6 +185,12 @@ reservationSchema.pre('save', function(next) {
   // Generate QR code if not exists
   if (!this.qrCode) {
     this.qrCode = `PRS_${this._id}_${Date.now()}`;
+  }
+  
+  // Generate vehicle-time hash to prevent duplicate reservations
+  if (this.vehicleInfo.numberPlate && this.timeSlot.startTime && this.timeSlot.endTime) {
+    const hashData = `${this.vehicleInfo.numberPlate.toUpperCase()}_${this.timeSlot.startTime.getTime()}_${this.timeSlot.endTime.getTime()}_${this.parkingLot}`;
+    this.vehicleTimeHash = crypto.createHash('sha256').update(hashData).digest('hex');
   }
   
   next();
@@ -199,6 +214,35 @@ reservationSchema.statics.findOverlapping = function(parkingLotId, startTime, en
   }
   
   return this.find(query);
+};
+
+// Static method to check for duplicate vehicle reservations
+reservationSchema.statics.checkDuplicateVehicle = async function(numberPlate, startTime, endTime, parkingLotId, excludeId = null) {
+  const query = {
+    'vehicleInfo.numberPlate': numberPlate.toUpperCase(),
+    parkingLot: parkingLotId,
+    status: { $in: ['confirmed', 'active', 'pending'] },
+    $or: [
+      {
+        // Overlapping time slots
+        'timeSlot.startTime': { $lt: endTime },
+        'timeSlot.endTime': { $gt: startTime }
+      }
+    ]
+  };
+  
+  if (excludeId) {
+    query._id = { $ne: excludeId };
+  }
+  
+  const existingReservation = await this.findOne(query);
+  return existingReservation;
+};
+
+// Static method to generate hash for duplicate checking
+reservationSchema.statics.generateVehicleTimeHash = function(numberPlate, startTime, endTime, parkingLotId) {
+  const hashData = `${numberPlate.toUpperCase()}_${new Date(startTime).getTime()}_${new Date(endTime).getTime()}_${parkingLotId}`;
+  return crypto.createHash('sha256').update(hashData).digest('hex');
 };
 
 // Method to calculate refund amount based on cancellation policy

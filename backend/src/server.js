@@ -48,7 +48,8 @@ const corsOptions = {
       'http://localhost:5173',
       'http://localhost:5174',
       'https://parking-reservation-frontend.vercel.app',
-      'https://parkplot.vercel.app' // ParkPlot production frontend URL
+      'https://parkplot.vercel.app', // ParkPlot production frontend URL
+      'https://parking-reservation-system-vpqe.onrender.com' // Render backend self-reference
     ];
     
     // Allow requests with no origin (mobile apps, Postman, etc.)
@@ -86,7 +87,8 @@ app.use((req, res, next) => {
     'http://localhost:5173',
     'http://localhost:5174',
     'https://parking-reservation-frontend.vercel.app',
-    'https://parkplot.vercel.app'
+    'https://parkplot.vercel.app',
+    'https://parking-reservation-system-vpqe.onrender.com'
   ];
   
   if (allowedOrigins.includes(origin)) {

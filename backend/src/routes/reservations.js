@@ -8,7 +8,8 @@ import {
   cancelReservation,
   checkinReservation,
   checkoutReservation,
-  verifyQRCode
+  verifyQRCode,
+  checkReservationConflicts
 } from '../controllers/reservationController.js';
 
 const router = express.Router();
@@ -33,5 +34,8 @@ router.post('/:id/checkout', checkoutReservation);
 
 // QR Code verification (vendor only)
 router.post('/verify-qr', restrictTo('vendor'), verifyQRCode);
+
+// Check for reservation conflicts
+router.post('/check-conflicts', checkReservationConflicts);
 
 export default router;

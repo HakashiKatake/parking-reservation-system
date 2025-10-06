@@ -1,6 +1,7 @@
 import Reservation from '../models/Reservation.js';
 import ParkingLot from '../models/ParkingLot.js';
 import { asyncHandler } from '../middleware/errorHandler.js';
+import { validateReservationUniqueness, normalizeNumberPlate, getConflictingReservations } from '../utils/reservationValidator.js';
 
 // @desc    Get user reservations
 // @route   GET /api/reservations
@@ -138,12 +139,36 @@ export const createReservation = asyncHandler(async (req, res) => {
     });
   }
 
-  // Check for existing reservation conflicts
+  // Comprehensive duplicate reservation validation
+  const validation = await validateReservationUniqueness(
+    vehicleNumber,
+    startDateTime,
+    endDateTime,
+    parkingLotId,
+    req.user._id
+  );
+
+  if (!validation.isValid) {
+    return res.status(409).json({
+      success: false,
+      message: validation.message,
+      type: validation.type,
+      conflictingReservation: validation.conflictingReservation ? {
+        id: validation.conflictingReservation._id,
+        startTime: validation.conflictingReservation.timeSlot.startTime,
+        endTime: validation.conflictingReservation.timeSlot.endTime,
+        status: validation.conflictingReservation.status,
+        parkingLot: validation.conflictingReservation.parkingLot
+      } : null
+    });
+  }
+
+  // Check for existing reservation conflicts at the parking lot
   const conflictingReservation = await Reservation.findOne({
     parkingLot: parkingLotId,
     status: { $in: ['confirmed', 'active'] },
     $or: [
-      { startTime: { $lt: endDateTime }, endTime: { $gt: startDateTime } }
+      { 'timeSlot.startTime': { $lt: endDateTime }, 'timeSlot.endTime': { $gt: startDateTime } }
     ]
   });
 
@@ -168,7 +193,7 @@ export const createReservation = asyncHandler(async (req, res) => {
     parkingLot: parkingLotId,
     vehicleInfo: {
       type: vehicleType === 'car' ? 'fourWheeler' : vehicleType,
-      numberPlate: vehicleNumber.toUpperCase()
+      numberPlate: normalizeNumberPlate(vehicleNumber)
     },
     timeSlot: {
       startTime: startDateTime,
@@ -533,5 +558,50 @@ export const verifyQRCode = asyncHandler(async (req, res) => {
       verifiedAt: now,
       action: 'checked_in'
     }
+  });
+});
+
+// @desc    Check for reservation conflicts before booking
+// @route   POST /api/reservations/check-conflicts
+// @access  Private
+export const checkReservationConflicts = asyncHandler(async (req, res) => {
+  const { vehicleNumber, startTime, endTime, parkingLotId } = req.body;
+
+  if (!vehicleNumber || !startTime || !endTime || !parkingLotId) {
+    return res.status(400).json({
+      success: false,
+      message: 'Please provide vehicle number, start time, end time, and parking lot ID'
+    });
+  }
+
+  // Validate the reservation uniqueness
+  const validation = await validateReservationUniqueness(
+    vehicleNumber,
+    new Date(startTime),
+    new Date(endTime),
+    parkingLotId,
+    req.user._id
+  );
+
+  if (!validation.isValid) {
+    return res.status(200).json({
+      success: true,
+      hasConflict: true,
+      conflictType: validation.type,
+      message: validation.message,
+      conflictingReservation: validation.conflictingReservation ? {
+        id: validation.conflictingReservation._id,
+        startTime: validation.conflictingReservation.timeSlot.startTime,
+        endTime: validation.conflictingReservation.timeSlot.endTime,
+        status: validation.conflictingReservation.status,
+        parkingLot: validation.conflictingReservation.parkingLot
+      } : null
+    });
+  }
+
+  res.status(200).json({
+    success: true,
+    hasConflict: false,
+    message: 'No conflicts found. Vehicle can be booked for this time slot.'
   });
 });

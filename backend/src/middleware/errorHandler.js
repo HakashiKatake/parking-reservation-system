@@ -41,7 +41,8 @@ export const errorHandler = (err, req, res, next) => {
     'http://localhost:5173',
     'http://localhost:5174',
     'https://parking-reservation-frontend.vercel.app',
-    'https://parkplot.vercel.app'
+    'https://parkplot.vercel.app',
+    'https://parking-reservation-system-vpqe.onrender.com'
   ];
   
   if (allowedOrigins.includes(origin)) {

@@ -113,7 +113,10 @@ const RecentReservations = ({ reservations }) => (
                 <h4 className="font-medium text-gray-900">{reservation.parkingLot.name}</h4>
                 <p className="text-sm text-gray-600 flex items-center mt-1">
                   <MapPinIcon className="h-4 w-4 mr-1" />
-                  {reservation.parkingLot.address}
+                  {typeof reservation.parkingLot.address === 'string' 
+                    ? reservation.parkingLot.address 
+                    : `${reservation.parkingLot.address?.street || ''}, ${reservation.parkingLot.address?.city || ''}, ${reservation.parkingLot.address?.state || ''}`
+                  }
                 </p>
               </div>
               <span className={`px-2 py-1 text-xs rounded-full ${
@@ -130,22 +133,53 @@ const RecentReservations = ({ reservations }) => (
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
               <div>
                 <p className="text-gray-500">Date</p>
-                <p className="font-medium">{new Date(reservation.startTime).toLocaleDateString()}</p>
+                <p className="font-medium">
+                  {reservation.timeSlot?.date 
+                    ? new Date(reservation.timeSlot.date).toLocaleDateString()
+                    : (reservation.createdAt ? new Date(reservation.createdAt).toLocaleDateString() : 'N/A')
+                  }
+                </p>
               </div>
               <div>
                 <p className="text-gray-500">Time</p>
                 <p className="font-medium">
-                  {new Date(reservation.startTime).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})} - 
-                  {new Date(reservation.endTime).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                  {reservation.timeSlot?.startTime && reservation.timeSlot?.endTime ? (
+                    <>
+                      {reservation.timeSlot.startTime} - {reservation.timeSlot.endTime}
+                    </>
+                  ) : 'N/A'}
                 </p>
               </div>
               <div>
                 <p className="text-gray-500">Duration</p>
-                <p className="font-medium">{reservation.duration} hours</p>
+                <p className="font-medium">
+                  {reservation.timeSlot?.duration || 
+                   (reservation.timeSlot?.startTime && reservation.timeSlot?.endTime ? 
+                    (() => {
+                      try {
+                        const parseTime = (timeStr) => {
+                          const [time, period] = timeStr.split(' ');
+                          const [hours, minutes] = time.split(':').map(Number);
+                          let hour24 = hours;
+                          if (period === 'PM' && hours !== 12) hour24 += 12;
+                          if (period === 'AM' && hours === 12) hour24 = 0;
+                          return hour24 * 60 + minutes;
+                        };
+                        const start = parseTime(reservation.timeSlot.startTime);
+                        const end = parseTime(reservation.timeSlot.endTime);
+                        return Math.round((end - start) / 60);
+                      } catch {
+                        return 0;
+                      }
+                    })() : 0)
+                  } hours
+                </p>
               </div>
               <div>
                 <p className="text-gray-500">Amount</p>
-                <p className="font-medium text-indigo-600">₹{reservation.totalAmount}</p>
+                <p className="font-medium text-indigo-600">
+                  ₹{reservation.pricing?.totalAmount || reservation.pricing?.amount || reservation.totalAmount || reservation.amount || 0}
+                </p>
               </div>
             </div>
             
@@ -207,15 +241,23 @@ const UserDashboard = () => {
       const dashboardData = await api.users.getDashboard();
       
       console.log('UserDashboard - API Response:', dashboardData);
+      console.log('UserDashboard - Stats:', dashboardData.data?.stats);
+      console.log('UserDashboard - Recent Reservations:', dashboardData.data?.recentReservations);
       
-      // Safely set stats with fallbacks
+      // Debug individual reservation data
+      if (dashboardData.data?.recentReservations?.length > 0) {
+        console.log('UserDashboard - First Reservation Data:', dashboardData.data.recentReservations[0]);
+        console.log('UserDashboard - First Reservation Keys:', Object.keys(dashboardData.data.recentReservations[0]));
+      }
+      
+      // Safely set stats with fallbacks - use correct response structure
       setStats({
-        totalBookings: dashboardData.stats?.totalBookings || 0,
-        activeBookings: dashboardData.stats?.activeBookings || 0,
-        totalSpent: dashboardData.stats?.totalSpent || 0,
-        favoriteSpots: dashboardData.stats?.favoriteSpots || 0
+        totalBookings: dashboardData.data?.stats?.totalBookings || 0,
+        activeBookings: dashboardData.data?.stats?.activeBookings || 0,
+        totalSpent: dashboardData.data?.stats?.totalSpent || 0,
+        favoriteSpots: dashboardData.data?.stats?.favoriteSpots || 0
       });
-      setReservations(dashboardData.recentReservations || []);
+      setReservations(dashboardData.data?.recentReservations || []);
     } catch (error) {
       console.error('Failed to fetch dashboard data:', error);
       

@@ -258,13 +258,17 @@ const RecentBookings = ({ bookings }) => (
               <div>
                 <p className="text-gray-500">Time Slot</p>
                 <p className="font-medium">
-                  {new Date(booking.startTime).toLocaleString()} - 
-                  {new Date(booking.endTime).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                  {booking.timeSlot?.startTime ? 
+                    `${new Date(booking.timeSlot.startTime).toLocaleString()} - ${new Date(booking.timeSlot.endTime).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}` 
+                    : 'Time not available'
+                  }
                 </p>
               </div>
               <div>
                 <p className="text-gray-500">Amount</p>
-                <p className="font-medium text-green-600">₹{booking.totalAmount}</p>
+                <p className="font-medium text-green-600">
+                  ₹{booking.pricing?.totalAmount || booking.pricing?.total || booking.totalAmount || 0}
+                </p>
               </div>
             </div>
           </div>
@@ -327,10 +331,15 @@ const VendorDashboard = () => {
 
       // Fetch recent reservations
       const reservationsResponse = await api.vendors.getReservations({ limit: 5 });
-      console.log('Reservations data:', reservationsResponse);
+      console.log('Vendor Reservations data:', reservationsResponse);
       
       if (reservationsResponse.success) {
-        setRecentBookings(reservationsResponse.data.reservations || []);
+        const reservations = reservationsResponse.data.reservations || [];
+        if (reservations.length > 0) {
+          console.log('VendorDashboard - First Reservation Keys:', Object.keys(reservations[0]));
+          console.log('VendorDashboard - First Reservation Data:', reservations[0]);
+        }
+        setRecentBookings(reservations);
       }
       
     } catch (error) {
